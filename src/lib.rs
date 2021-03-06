@@ -4,7 +4,7 @@ use serde_json::json;
 
 const CONTENT_END_POINT: &str = "https://content.dropboxapi.com";
 const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Client {
     token: String,
 }
