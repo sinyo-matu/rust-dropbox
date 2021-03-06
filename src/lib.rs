@@ -9,15 +9,28 @@ pub struct Client {
     token: String,
 }
 #[derive(Debug, Deserialize)]
-struct DbxRequestErrorSummary {
+struct DbxRequestLimitsErrorSummary {
     error_summary: String,
-    error: DbxRequestErrorDetail,
+    error: DbxRequestErrorReason,
 }
 #[derive(Debug, Deserialize)]
-struct DbxRequestErrorDetail {
+struct DbxRequestErrorSummary{
+    error_summary:String,
+    error: DbxRequestErrorTag,
+}
+
+#[derive(Debug, Deserialize)]
+struct DbxRequestErrorReason { 
+    reason: DbxRequestErrorTag,
+    retry_after:u32,
+}
+#[derive(Debug, Deserialize)]
+struct DbxRequestErrorTag {
     #[serde(alias = ".tag")]
     tag: String,
+
 }
+
 
 impl Client {
     pub fn new(token: &str) -> Self {
@@ -104,10 +117,10 @@ async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>
             }
             StatusCode::TOO_MANY_REQUESTS => {
                 let text = res.text().await?;
-                match serde_json::from_str::<DbxRequestErrorSummary>(&text) {
+                match serde_json::from_str::<DbxRequestLimitsErrorSummary>(&text) {
                     Ok(error_summary) => {
                         return Err(DropboxError::DbxRequestLimitsError(
-                            error_summary.error_summary,
+                            format!("{} , retry after {}",error_summary.error_summary,error_summary.error.retry_after)
                         ));
                     }
                     Err(_) => {
