@@ -30,8 +30,10 @@ struct DbxRequestErrorTag {
     tag: String,
 
 }
-
-
+#[derive(Debug, Deserialize)]
+struct UserCheckResult{
+    result:String,
+}
 impl Client {
     pub fn new(token: &str) -> Self {
         Self {
@@ -39,6 +41,26 @@ impl Client {
         }
     }
 
+    pub async fn check_user(&self,ping_str:&str)-> DropboxResult<()> {
+        let url = format!("{}{}", CONTENT_END_POINT, "/2/check/user");
+        let client = reqwest::Client::new();
+    let result = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", self.token))
+        .header("Content-Type", "application/json")
+        .body(json!(
+            {
+                "query":ping_str,
+            }
+            ).to_string())
+        .send()
+        .await?.json::<UserCheckResult>().await?.result;
+        if result == ping_str {
+            return Ok(())
+        }
+        return Err(DropboxError::DbxUserCheckError(result))
+
+    }
     ///binding /upload
     pub async fn upload(&self, file: Vec<u8>, path: &str, mode: UploadMode) -> DropboxResult<()> {
         println!("uploading {}", path);
@@ -96,23 +118,17 @@ async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>
                 return Err(DropboxError::DbxPathError(text));
             }
             StatusCode::UNAUTHORIZED => {
-                let text = res.text().await?;
-                let error_summary: DbxRequestErrorSummary =
-                    serde_json::from_str(&text).unwrap();
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 return Err(DropboxError::DbxInvalidTokenError(
                     error_summary.error_summary,
                 ));
             }
             StatusCode::FORBIDDEN => {
-                let text = res.text().await?;
-                let error_summary: DbxRequestErrorSummary =
-                    serde_json::from_str(&text).unwrap();
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 return Err(DropboxError::DbxAccessError(error_summary.error_summary));
             }
             StatusCode::CONFLICT => {
-                let text = res.text().await?;
-                let error_summary: DbxRequestErrorSummary =
-                    serde_json::from_str(&text).unwrap();
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 return Err(DropboxError::DbxConflictError(error_summary.error_summary));
             }
             StatusCode::TOO_MANY_REQUESTS => {
@@ -187,6 +203,7 @@ pub type DropboxResult<T> = std::result::Result<T, DropboxError>;
 #[derive(Debug)]
 pub enum DropboxError {
     HttpRequestError(reqwest_error),
+    DbxUserCheckError(String),
     DbxPathError(String),
     DbxInvalidTokenError(String),
     DbxRequestLimitsError(String),
