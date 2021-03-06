@@ -42,9 +42,9 @@ impl Client {
     }
 
     pub async fn check_user(&self,ping_str:&str)-> DropboxResult<()> {
-        let url = format!("{}{}", CONTENT_END_POINT, "/2/check/user");
+        let url = format!("{}{}", OPERATION_END_POINT, "/2/check/user");
         let client = reqwest::Client::new();
-    let result = client
+    let res = client
         .post(&url)
         .header("Authorization", format!("Bearer {}", self.token))
         .header("Content-Type", "application/json")
@@ -54,11 +54,14 @@ impl Client {
             }
             ).to_string())
         .send()
-        .await?.json::<UserCheckResult>().await?.result;
-        if result == ping_str {
-            return Ok(())
+        .await?;
+        match res.status() {
+            reqwest::StatusCode::BAD_REQUEST =>{
+                    let text = res.text().await?;
+                    return Err(DropboxError::DbxInvalidTokenError(text));
+            }
+            _ => handle_dbx_request_response(res).await
         }
-        return Err(DropboxError::DbxUserCheckError(result))
 
     }
     ///binding /upload
@@ -223,6 +226,19 @@ mod tests {
     use super::*;
     use std::{fs::File, io::Read};
     use std::env;
+
+    #[test]
+    fn test_user_check(){
+        let token = env::var("DROPBOX_TOKEN").unwrap();
+        let client = Client::new(&token);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(
+            async move {
+                client.check_user("ping").await
+            }
+        );
+        assert_eq!((),res.unwrap())
+    }
     #[test]
     fn test_upload() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
