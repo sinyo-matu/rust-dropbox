@@ -5,7 +5,7 @@ use serde_json::json;
 const CONTENT_END_POINT: &str = "https://content.dropboxapi.com";
 const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
 #[derive(Debug)]
-struct Client {
+pub struct Client {
     token: String,
 }
 #[derive(Debug, Deserialize)]
@@ -135,7 +135,7 @@ async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>
     Ok(())
 }
 
-struct MoveOption {
+pub struct MoveOption {
     allow_shared_folder:bool,
     auto_rename:bool,
     allow_ownership_transfer:bool,
