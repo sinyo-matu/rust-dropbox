@@ -1,68 +1,81 @@
-use reqwest::{Error as reqwest_error, StatusCode};
+mod test;
+
+use async_trait::async_trait;
+use reqwest::{header, header::HeaderMap, Error as reqwest_error, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
+use std::time;
 
 const CONTENT_END_POINT: &str = "https://content.dropboxapi.com";
 const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
-#[derive(Debug,Clone)]
-pub struct Client {
-    token: String,
-}
+
 #[derive(Debug, Deserialize)]
 struct DbxRequestLimitsErrorSummary {
     error_summary: String,
     error: DbxRequestErrorReason,
 }
 #[derive(Debug, Deserialize)]
-struct DbxRequestErrorSummary{
-    error_summary:String,
+struct DbxRequestErrorSummary {
+    error_summary: String,
     error: DbxRequestErrorTag,
 }
 
 #[derive(Debug, Deserialize)]
-struct DbxRequestErrorReason { 
+struct DbxRequestErrorReason {
     reason: DbxRequestErrorTag,
-    retry_after:u32,
+    retry_after: u32,
 }
 #[derive(Debug, Deserialize)]
 struct DbxRequestErrorTag {
     #[serde(alias = ".tag")]
     tag: String,
-
 }
 #[derive(Debug, Deserialize)]
-struct UserCheckResult{
-    result:String,
+struct UserCheckResult {
+    result: String,
 }
-impl Client {
+#[derive(Debug, Clone)]
+pub struct OAuth2Client {
+    client: reqwest::Client,
+}
+
+impl OAuth2Client {
     pub fn new(token: &str) -> Self {
-        Self {
-            token: token.to_string(),
-        }
+        let mut auth_value = header::HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
+        auth_value.set_sensitive(true);
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, auth_value);
+        let client = reqwest::ClientBuilder::new()
+            .connect_timeout(time::Duration::from_secs(100))
+            .default_headers(headers)
+            .build()
+            .unwrap();
+        Self { client }
     }
 
-    pub async fn check_user(&self,ping_str:&str)-> DropboxResult<()> {
+    pub async fn check_user(&self, ping_str: &str) -> DropboxResult<()> {
         let url = format!("{}{}", OPERATION_END_POINT, "/2/check/user");
-        let client = reqwest::Client::new();
-    let res = client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", self.token))
-        .header("Content-Type", "application/json")
-        .body(json!(
-            {
-                "query":ping_str,
-            }
-            ).to_string())
-        .send()
-        .await?;
+        let res = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .body(
+                json!(
+                {
+                    "query":ping_str,
+                }
+                )
+                .to_string(),
+            )
+            .send()
+            .await?;
         match res.status() {
-            reqwest::StatusCode::BAD_REQUEST =>{
-                    let text = res.text().await?;
-                    return Err(DropboxError::DbxInvalidTokenError(text));
+            reqwest::StatusCode::BAD_REQUEST => {
+                let text = res.text().await?;
+                return Err(DropboxError::DbxInvalidTokenError(text));
             }
-            _ => handle_dbx_request_response(res).await
+            _ => handle_dbx_request_response(res).await,
         }
-
     }
     ///binding /upload
     pub async fn upload(&self, file: Vec<u8>, path: &str, mode: UploadMode) -> DropboxResult<()> {
@@ -72,10 +85,9 @@ impl Client {
             UploadMode::Overwrite => "overwrite",
         };
         let url = format!("{}{}", CONTENT_END_POINT, "/2/files/upload");
-        let client = reqwest::Client::new();
-        let res = client
+        let res = self
+            .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.token))
             .header("Content-Type", "application/octet-stream")
             .header(
                 "Dropbox-API-Arg",
@@ -88,32 +100,50 @@ impl Client {
         handle_dbx_request_response(res).await
     }
 
+    pub async fn download(&self, path: &str) -> DropboxResult<Vec<u8>> {
+        let url = format!("{}{}", CONTENT_END_POINT, "/2/files/download");
+        let res = self
+            .client
+            .post(&url)
+            .header("Dropbox-API-Arg", json!({ "path": path }).to_string())
+            .send()
+            .await?;
+
+        handle_dbx_request_response::<Vec<u8>>(res).await
+    }
+
     // binding /move_v2
-    pub async fn move_file(&self,from_path:&str,to_path:&str,option:MoveOption) -> DropboxResult<()> {
+    pub async fn move_file(
+        &self,
+        from_path: &str,
+        to_path: &str,
+        option: MoveOption,
+    ) -> DropboxResult<()> {
         println!("moving {} to {}", from_path, to_path);
-    let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
-    let client = reqwest::Client::new();
-    let res = client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", self.token))
-        .header("Content-Type", "application/json")
-        .body(json!(
-            {
-                "from_path":from_path,
-                "to_path":to_path,
-                "allow_shared_folder": option.allow_shared_folder,
-                "autorename": option.auto_rename,
-                "allow_ownership_transfer": option.allow_ownership_transfer
-            }
-            ).to_string())
-        .send()
-        .await?;
+        let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
+        let res = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .body(
+                json!(
+                {
+                    "from_path":from_path,
+                    "to_path":to_path,
+                    "allow_shared_folder": option.allow_shared_folder,
+                    "autorename": option.auto_rename,
+                    "allow_ownership_transfer": option.allow_ownership_transfer
+                }
+                )
+                .to_string(),
+            )
+            .send()
+            .await?;
         handle_dbx_request_response(res).await
     }
 }
 
-
-async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>{
+async fn handle_dbx_request_response<T: FromRes>(res: reqwest::Response) -> DropboxResult<T> {
     if res.status() != StatusCode::OK {
         match res.status() {
             StatusCode::BAD_REQUEST => {
@@ -132,15 +162,34 @@ async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>
             }
             StatusCode::CONFLICT => {
                 let error_summary = res.json::<DbxRequestErrorSummary>().await?;
-                return Err(DropboxError::DbxConflictError(error_summary.error_summary));
+                let content: Vec<&str> = error_summary.error_summary.split("/").collect();
+                match content[0] == "path" {
+                    true => return Err(DropboxError::DbxPathError(content[1].to_string())),
+                    false => match content[0] == "from_lookup" {
+                        true => {
+                            return Err(DropboxError::DbxFromLookUpError(content[1].to_string()))
+                        }
+                        false => match content[0] == "to" {
+                            true => {
+                                return Err(DropboxError::DbxExistedError(content[1].to_string()))
+                            }
+                            false => {
+                                return Err(DropboxError::DbxConflictError(
+                                    error_summary.error_summary,
+                                ))
+                            }
+                        },
+                    },
+                }
             }
             StatusCode::TOO_MANY_REQUESTS => {
                 let text = res.text().await?;
                 match serde_json::from_str::<DbxRequestLimitsErrorSummary>(&text) {
                     Ok(error_summary) => {
-                        return Err(DropboxError::DbxRequestLimitsError(
-                            format!("{} , retry after {}",error_summary.error_summary,error_summary.error.retry_after)
-                        ));
+                        return Err(DropboxError::DbxRequestLimitsError(format!(
+                            "{} , retry after {}",
+                            error_summary.error_summary, error_summary.error.retry_after
+                        )));
                     }
                     Err(_) => {
                         return Err(DropboxError::DbxRequestLimitsError(text));
@@ -164,21 +213,21 @@ async fn handle_dbx_request_response(res:reqwest::Response) -> DropboxResult<()>
             }
         }
     }
-    Ok(())
+    Ok(T::from_res(res).await)
 }
 
 pub struct MoveOption {
-    allow_shared_folder:bool,
-    auto_rename:bool,
-    allow_ownership_transfer:bool,
+    allow_shared_folder: bool,
+    auto_rename: bool,
+    allow_ownership_transfer: bool,
 }
 
 impl MoveOption {
     pub fn new() -> Self {
         Self {
-            allow_shared_folder:false,
-            auto_rename:false,
-            allow_ownership_transfer:false,
+            allow_shared_folder: false,
+            auto_rename: false,
+            allow_ownership_transfer: false,
         }
     }
 
@@ -192,7 +241,7 @@ impl MoveOption {
         self
     }
 
-    pub fn allow_ownership_transfer(mut self) -> Self{
+    pub fn allow_ownership_transfer(mut self) -> Self {
         self.allow_ownership_transfer = true;
         self
     }
@@ -208,7 +257,9 @@ pub enum DropboxError {
     HttpRequestError(reqwest_error),
     DbxUserCheckError(String),
     DbxPathError(String),
+    DbxExistedError(String),
     DbxInvalidTokenError(String),
+    DbxFromLookUpError(String),
     DbxRequestLimitsError(String),
     DbxAccessError(String),
     DbxConflictError(String),
@@ -221,48 +272,29 @@ impl From<reqwest_error> for DropboxError {
         Self::HttpRequestError(e)
     }
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::{fs::File, io::Read};
-    use std::env;
 
-    #[test]
-    fn test_user_check(){
-        let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(
-            async move {
-                client.check_user("ping").await
-            }
-        );
-        assert_eq!((),res.unwrap())
-    }
-    #[test]
-    fn test_upload() {
-        let token = env::var("DROPBOX_TOKEN").unwrap();
-        let mut file = File::open("./profile.jpg").unwrap();
-        let mut buf: Vec<u8> = Vec::new();
-        file.read_to_end(&mut buf).unwrap();
-        let client = Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res =
-            rt.block_on(async move { client.upload(buf, "/test/profile.jpg", UploadMode::Overwrite).await });
-        assert_eq!((), res.unwrap())
-    }
+#[async_trait]
+trait FromRes {
+    async fn from_res(res: reqwest::Response) -> Self;
+}
 
-    #[test]
-    fn test_move() {
-        let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(
-            async move {
-                let move_option = MoveOption::new().allow_ownership_transfer().allow_shared_folder().auto_rename();
-                client.move_file("/test/profile.jpg", "/profile.jpg", move_option).await
-            }
-        );
-        assert_eq!((),res.unwrap())
+#[async_trait]
+impl FromRes for String {
+    async fn from_res(res: reqwest::Response) -> Self {
+        res.text().await.unwrap()
+    }
+}
+
+#[async_trait]
+impl FromRes for Vec<u8> {
+    async fn from_res(res: reqwest::Response) -> Self {
+        res.bytes().await.unwrap().to_vec()
+    }
+}
+
+#[async_trait]
+impl FromRes for () {
+    async fn from_res(_res: reqwest::Response) -> Self {
+        ()
     }
 }
