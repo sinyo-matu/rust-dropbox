@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use reqwest::{header, header::HeaderMap, Error as reqwest_error, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
-use std::time;
+use std::{time};
 
 const CONTENT_END_POINT: &str = "https://content.dropboxapi.com";
 const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
@@ -74,7 +74,7 @@ impl OAuth2Client {
                 let text = res.text().await?;
                 return Err(DropboxError::DbxInvalidTokenError(text));
             }
-            _ => handle_dbx_request_response(res).await,
+            _ => handle_dbx_request_response::<()>(res).await,
         }
     }
     ///binding /upload
@@ -97,9 +97,10 @@ impl OAuth2Client {
             .send()
             .await?;
 
-        handle_dbx_request_response(res).await
+        handle_dbx_request_response::<()>(res).await
     }
 
+    ///binding /download
     pub async fn download(&self, path: &str) -> DropboxResult<Vec<u8>> {
         let url = format!("{}{}", CONTENT_END_POINT, "/2/files/download");
         let res = self
@@ -139,11 +140,11 @@ impl OAuth2Client {
             )
             .send()
             .await?;
-        handle_dbx_request_response(res).await
+        handle_dbx_request_response::<()>(res).await
     }
 }
 
-async fn handle_dbx_request_response<T: FromRes>(res: reqwest::Response) -> DropboxResult<T> {
+async fn handle_dbx_request_response<T: FromRes>(res: reqwest::Response) -> DropboxResult<T::Item> {
     if res.status() != StatusCode::OK {
         match res.status() {
             StatusCode::BAD_REQUEST => {
@@ -213,7 +214,7 @@ async fn handle_dbx_request_response<T: FromRes>(res: reqwest::Response) -> Drop
             }
         }
     }
-    Ok(T::from_res(res).await)
+    T::from_res(res).await
 }
 
 pub struct MoveOption {
@@ -275,26 +276,22 @@ impl From<reqwest_error> for DropboxError {
 
 #[async_trait]
 trait FromRes {
-    async fn from_res(res: reqwest::Response) -> Self;
-}
-
-#[async_trait]
-impl FromRes for String {
-    async fn from_res(res: reqwest::Response) -> Self {
-        res.text().await.unwrap()
-    }
+    type Item;
+    async fn from_res(res: reqwest::Response) -> DropboxResult<Self::Item>;
 }
 
 #[async_trait]
 impl FromRes for Vec<u8> {
-    async fn from_res(res: reqwest::Response) -> Self {
-        res.bytes().await.unwrap().to_vec()
+    type Item = Self;
+    async fn from_res(res: reqwest::Response) -> DropboxResult<Self> {
+        res.bytes().await.map(|b| b.to_vec()).map_err(|e| DropboxError::HttpRequestError(e))
     }
 }
 
 #[async_trait]
 impl FromRes for () {
-    async fn from_res(_res: reqwest::Response) -> Self {
-        ()
+    type Item = Self;
+    async fn from_res(_res: reqwest::Response) -> DropboxResult<Self> {
+        DropboxResult::Ok(())
     }
 }
