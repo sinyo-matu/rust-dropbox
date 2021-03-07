@@ -46,7 +46,7 @@ mod tests {
             let move_option = MoveOption::new()
                 .allow_ownership_transfer()
                 .allow_shared_folder()
-                .auto_rename();
+                .allow_auto_rename();
             client
                 .move_file("/test/profile.jpg", "/profile.jpg", move_option)
                 .await

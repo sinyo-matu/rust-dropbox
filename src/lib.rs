@@ -237,7 +237,7 @@ impl MoveOption {
         self
     }
 
-    pub fn auto_rename(mut self) -> Self {
+    pub fn allow_auto_rename(mut self) -> Self {
         self.auto_rename = true;
         self
     }
