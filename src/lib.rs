@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use reqwest::{header, header::HeaderMap, Error as reqwest_error, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
-use std::{time};
+use std::time;
 
 const CONTENT_END_POINT: &str = "https://content.dropboxapi.com";
 const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
@@ -79,7 +79,6 @@ impl OAuth2Client {
     }
     ///binding /upload
     pub async fn upload(&self, file: Vec<u8>, path: &str, mode: UploadMode) -> DropboxResult<()> {
-        println!("uploading {}", path);
         let mode = match mode {
             UploadMode::Add => "add",
             UploadMode::Overwrite => "overwrite",
@@ -120,7 +119,6 @@ impl OAuth2Client {
         to_path: &str,
         option: MoveOption,
     ) -> DropboxResult<()> {
-        println!("moving {} to {}", from_path, to_path);
         let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
         let res = self
             .client
@@ -284,7 +282,10 @@ trait FromRes {
 impl FromRes for Vec<u8> {
     type Item = Self;
     async fn from_res(res: reqwest::Response) -> DropboxResult<Self> {
-        res.bytes().await.map(|b| b.to_vec()).map_err(|e| DropboxError::HttpRequestError(e))
+        res.bytes()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(|e| DropboxError::HttpRequestError(e))
     }
 }
 
