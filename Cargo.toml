@@ -1,6 +1,6 @@
 [package]
 name = "rust_dropbox"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["sinyo-matu <seelerei0130@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -12,11 +12,17 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["blocking"]
+non-blocking = ["reqwest","async-trait"]
+blocking=["ureq"]
+
 [dependencies]
 serde_json = "1.0.0"
-reqwest = {version="0.11.1",features=["json"]}
 serde = {version = "1.0.0",features = ["derive"]}
-async-trait = "0.1.45"
+ureq = { version="2.0.2",features= ["json"],optional=true }
+reqwest = {version="0.11.1",features=["json","blocking"],optional=true}
+async-trait = {version="0.1.45",optional=true}
 
 [dev-dependencies]
 tokio = { version = "1", features = [ "full" ] }

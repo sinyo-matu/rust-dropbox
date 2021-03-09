@@ -1,6 +1,7 @@
 # Rust_Dropbox
 
-A Crate binding to the Dropbox APIv2 with async interface.
+A Crate binding to the Dropbox APIv2 ,
+there is async interface can be activate by feature non-blocking.
 For now it only have some basic usage.
 
 available operations:
