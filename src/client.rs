@@ -122,6 +122,7 @@ impl OAuth2Client {
     }
 }
 
+#[inline]
 #[cfg(feature = "non-blocking")]
 async fn handle_async_dbx_request_response<T: FromAsyncRes>(
     res: reqwest::Response,
@@ -355,6 +356,7 @@ impl FromRes for () {
     }
 }
 
+#[inline]
 #[cfg(feature = "blocking")]
 fn handle_dbx_request_response<T: FromRes>(res: ureq::Response) -> DropboxResult<T::Item> {
     if res.status() != 200 {

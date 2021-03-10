@@ -45,9 +45,11 @@ pub enum DropboxError {
     DbxConflictError(String),
     DbxServerError(String),
     OtherError(String),
+    #[cfg(feature = "blocking")]
     BodyParseError(std::io::Error),
 }
 
+#[cfg(feature = "blocking")]
 impl From<std::io::Error> for DropboxError {
     fn from(e: std::io::Error) -> Self {
         Self::BodyParseError(e)
