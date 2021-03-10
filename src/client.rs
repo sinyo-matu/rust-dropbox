@@ -7,6 +7,7 @@ use async_trait::async_trait;
 #[cfg(feature = "non-blocking")]
 use reqwest::{header, header::HeaderMap, StatusCode};
 use serde_json::json;
+#[cfg(feature = "blocking")]
 use std::io::Read;
 use std::time;
 
@@ -49,14 +50,10 @@ impl OAuth2Client {
                 .to_string(),
             )
             .send()
-            .await
-            .map_err(|_| DropboxError::HttpRequestError)?;
+            .await?;
         match res.status() {
             reqwest::StatusCode::BAD_REQUEST => {
-                let text = res
-                    .text()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let text = res.text().await?;
                 return Err(DropboxError::DbxInvalidTokenError(text));
             }
             _ => handle_async_dbx_request_response::<()>(res).await,
@@ -79,9 +76,7 @@ impl OAuth2Client {
             )
             .body(file)
             .send()
-            .await
-            .map_err(|_| DropboxError::HttpRequestError)?;
-
+            .await?;
         handle_async_dbx_request_response::<()>(res).await
     }
 
@@ -93,9 +88,7 @@ impl OAuth2Client {
             .post(&url)
             .header("Dropbox-API-Arg", json!({ "path": path }).to_string())
             .send()
-            .await
-            .map_err(|_| DropboxError::HttpRequestError)?;
-
+            .await?;
         handle_async_dbx_request_response::<Vec<u8>>(res).await
     }
 
@@ -124,9 +117,7 @@ impl OAuth2Client {
                 .to_string(),
             )
             .send()
-            .await
-            .map_err(|_| DropboxError::HttpRequestError)?;
-
+            .await?;
         handle_async_dbx_request_response::<()>(res).await
     }
 }
@@ -138,33 +129,21 @@ async fn handle_async_dbx_request_response<T: FromAsyncRes>(
     if res.status() != StatusCode::OK {
         match res.status() {
             StatusCode::BAD_REQUEST => {
-                let text = res
-                    .text()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let text = res.text().await?;
                 return Err(DropboxError::DbxPathError(text));
             }
             StatusCode::UNAUTHORIZED => {
-                let error_summary = res
-                    .json::<DbxRequestErrorSummary>()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 return Err(DropboxError::DbxInvalidTokenError(
                     error_summary.error_summary,
                 ));
             }
             StatusCode::FORBIDDEN => {
-                let error_summary = res
-                    .json::<DbxRequestErrorSummary>()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 return Err(DropboxError::DbxAccessError(error_summary.error_summary));
             }
             StatusCode::CONFLICT => {
-                let error_summary = res
-                    .json::<DbxRequestErrorSummary>()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let error_summary = res.json::<DbxRequestErrorSummary>().await?;
                 let content: Vec<&str> = error_summary.error_summary.split("/").collect();
                 match content[0] == "path" {
                     true => return Err(DropboxError::DbxPathError(content[1].to_string())),
@@ -186,10 +165,7 @@ async fn handle_async_dbx_request_response<T: FromAsyncRes>(
                 }
             }
             StatusCode::TOO_MANY_REQUESTS => {
-                let text = res
-                    .text()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let text = res.text().await?;
                 match serde_json::from_str::<DbxRequestLimitsErrorSummary>(&text) {
                     Ok(error_summary) => {
                         return Err(DropboxError::DbxRequestLimitsError(format!(
@@ -203,17 +179,11 @@ async fn handle_async_dbx_request_response<T: FromAsyncRes>(
                 }
             }
             StatusCode::INTERNAL_SERVER_ERROR | StatusCode::SERVICE_UNAVAILABLE => {
-                let text = res
-                    .text()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let text = res.text().await?;
                 return Err(DropboxError::DbxServerError(text));
             }
             _ => {
-                let text = res
-                    .text()
-                    .await
-                    .map_err(|_| DropboxError::HttpRequestError)?;
+                let text = res.text().await?;
                 match serde_json::from_str::<DbxRequestErrorSummary>(&text) {
                     Ok(error_summary) => {
                         return Err(DropboxError::OtherError(error_summary.error_summary));
@@ -243,7 +213,7 @@ impl FromAsyncRes for Vec<u8> {
         res.bytes()
             .await
             .map(|b| b.to_vec())
-            .map_err(|_| DropboxError::HttpRequestError)
+            .map_err(|e| DropboxError::NonBlockingRequestError(e))
     }
 }
 
@@ -285,8 +255,7 @@ impl OAuth2BlockingClient {
             {
                 "query":ping_str,
             }
-            ))
-            .map_err(|_| DropboxError::HttpRequestError)?;
+            ))?;
         match res.status() {
             400 => {
                 let text = res.into_string()?;
@@ -311,8 +280,7 @@ impl OAuth2BlockingClient {
                 "Dropbox-API-Arg",
                 json!({"path":path,"mode":mode}).to_string().as_str(),
             )
-            .send_bytes(&file)
-            .map_err(|_| DropboxError::HttpRequestError)?;
+            .send_bytes(&file)?;
 
         handle_dbx_request_response::<()>(res)
     }
@@ -328,8 +296,7 @@ impl OAuth2BlockingClient {
                 "Dropbox-API-Arg",
                 json!({ "path": path }).to_string().as_str(),
             )
-            .call()
-            .map_err(|_| DropboxError::HttpRequestError)?;
+            .call()?;
 
         handle_dbx_request_response::<Vec<u8>>(res)
     }
@@ -355,8 +322,7 @@ impl OAuth2BlockingClient {
                 "autorename": option.auto_rename,
                 "allow_ownership_transfer": option.allow_ownership_transfer
             }
-            ))
-            .map_err(|_| DropboxError::HttpRequestError)?;
+            ))?;
         handle_dbx_request_response::<()>(res)
     }
 }

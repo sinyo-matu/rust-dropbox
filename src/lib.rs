@@ -2,7 +2,6 @@ pub mod client;
 mod test;
 
 use serde::Deserialize;
-
 #[derive(Debug, Deserialize)]
 struct DbxRequestLimitsErrorSummary {
     error_summary: String,
@@ -32,7 +31,10 @@ struct UserCheckResult {
 pub type DropboxResult<T> = std::result::Result<T, DropboxError>;
 #[derive(Debug)]
 pub enum DropboxError {
-    HttpRequestError,
+    #[cfg(feature = "non-blocking")]
+    NonBlockingRequestError(reqwest::Error),
+    #[cfg(feature = "blocking")]
+    BlockingRequestError(ureq::Error),
     DbxUserCheckError(String),
     DbxPathError(String),
     DbxExistedError(String),
@@ -49,6 +51,19 @@ pub enum DropboxError {
 impl From<std::io::Error> for DropboxError {
     fn from(e: std::io::Error) -> Self {
         Self::BodyParseError(e)
+    }
+}
+
+#[cfg(feature = "non-blocking")]
+impl From<reqwest::Error> for DropboxError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::NonBlockingRequestError(e)
+    }
+}
+#[cfg(feature = "blocking")]
+impl From<ureq::Error> for DropboxError {
+    fn from(e: ureq::Error) -> Self {
+        Self::BlockingRequestError(e)
     }
 }
 pub struct MoveOption {
