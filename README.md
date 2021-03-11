@@ -4,8 +4,8 @@
 
 A convenient tool binding to the Dropbox APIv2,
 Now it can operate `user_check`,`upload(file size below 150 MB)`, `move` and `download`.
-It will handle the error message from Dropbox api.
-And there is async api can be activate by feature non-blocking.
+It will handle error messages from Dropbox api.
+And there is a async api can be activate by feature `non-blocking`.
 
 For use, you need a Dropbox [access token](https://www.dropbox.com/developers/apps/)
 
