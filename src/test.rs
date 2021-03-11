@@ -7,112 +7,91 @@ mod tests {
         io::{Read, Write},
     };
 
-    #[cfg(feature = "non-blocking")]
-    #[test]
-    fn test_user_check() {
+    #[tokio::test]
+    async fn test_user_check() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            client.check_user("ping").await
-        });
-        assert_eq!((), res.unwrap())
+        let client = client::AsyncDBXClient::new(&token);
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let res = client.check_user("ping").await;
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "non-blocking")]
-    #[test]
-    fn test_upload() {
+    #[tokio::test]
+    async fn test_upload() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let mut file = File::open("./profile.jpg").unwrap();
         let mut buf: Vec<u8> = Vec::new();
         file.read_to_end(&mut buf).unwrap();
-        let client = client::OAuth2Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            client
-                .upload(buf, "/test/profile.jpg", UploadMode::Overwrite)
-                .await
-        });
+        let client = client::AsyncDBXClient::new(&token);
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let res = client
+            .upload(buf, "/test/profile.jpg", UploadMode::Overwrite)
+            .await;
 
-        assert_eq!((), res.unwrap())
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "non-blocking")]
-    #[test]
-    fn test_move() {
+    #[tokio::test]
+    async fn test_move() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-            let move_option = MoveOption::new()
-                .allow_ownership_transfer()
-                .allow_shared_folder()
-                .allow_auto_rename();
-            client
-                .move_file("/test/profile.jpg", "/profile.jpg", move_option)
-                .await
-        });
-        assert_eq!((), res.unwrap())
+        let client = client::AsyncDBXClient::new(&token);
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        let move_option = MoveOption::new()
+            .allow_ownership_transfer()
+            .allow_shared_folder()
+            .allow_auto_rename();
+        let res = client
+            .move_file("/test/profile.jpg", "/profile.jpg", move_option)
+            .await;
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "non-blocking")]
-    #[test]
-    fn test_download() {
+    #[tokio::test]
+    async fn test_download() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2Client::new(&token);
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let res = rt.block_on(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-            client.download("/profile.jpg").await
-        });
+        let client = client::AsyncDBXClient::new(&token);
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        let res = client.download("/profile.jpg").await;
         let bytes = res.unwrap();
         let mut file = File::create("new_profile.jpg").unwrap();
         file.write_all(&bytes).unwrap();
     }
 
-    #[cfg(feature = "blocking")]
     #[test]
     fn test_blocking_user_check() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2BlockingClient::new(&token);
+        let client = client::DBXClient::new(&token);
         let res = client.check_user("ping");
-        assert_eq!((), res.unwrap())
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "blocking")]
     #[test]
     fn test_blocking_upload() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let mut file = File::open("./profile.jpg").unwrap();
         let mut buf: Vec<u8> = Vec::new();
         file.read_to_end(&mut buf).unwrap();
-        let client = client::OAuth2BlockingClient::new(&token);
+        let client = client::DBXClient::new(&token);
         let res = client.upload(buf, "/test/profile.jpg", UploadMode::Overwrite);
-        assert_eq!((), res.unwrap())
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "blocking")]
     #[test]
     fn test_blocking_move() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2BlockingClient::new(&token);
+        let client = client::DBXClient::new(&token);
         let move_option = MoveOption::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
             .allow_auto_rename();
         let res = client.move_file("/test/profile.jpg", "/profile.jpg", move_option);
-
-        assert_eq!((), res.unwrap())
+        assert!(res.is_ok())
     }
 
-    #[cfg(feature = "blocking")]
     #[test]
     fn test_blocking_download() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
-        let client = client::OAuth2BlockingClient::new(&token);
+        let client = client::DBXClient::new(&token);
         let res = client.download("/profile.jpg");
         let bytes = res.unwrap();
         let mut file = File::create("new_profile.jpg").unwrap();

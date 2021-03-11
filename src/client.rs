@@ -16,12 +16,12 @@ const OPERATION_END_POINT: &str = "https://api.dropboxapi.com";
 
 #[cfg(feature = "non-blocking")]
 #[derive(Debug, Clone)]
-pub struct OAuth2Client {
+pub struct AsyncDBXClient {
     client: reqwest::Client,
 }
 
 #[cfg(feature = "non-blocking")]
-impl OAuth2Client {
+impl AsyncDBXClient {
     pub fn new(token: &str) -> Self {
         let mut auth_value = header::HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
         auth_value.set_sensitive(true);
@@ -230,13 +230,13 @@ impl FromAsyncRes for () {
 /////////////////////////////////////////////////////////////////////
 #[cfg(feature = "blocking")]
 //the blocking-io client
-pub struct OAuth2BlockingClient {
+pub struct DBXClient {
     client: ureq::Agent,
     token: String,
 }
 
 #[cfg(feature = "blocking")]
-impl OAuth2BlockingClient {
+impl DBXClient {
     pub fn new(token: &str) -> Self {
         let client = ureq::AgentBuilder::new()
             .timeout(time::Duration::from_secs(10))
