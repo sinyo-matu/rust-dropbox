@@ -11,13 +11,13 @@ For use, you need a Dropbox [access token](https://www.dropbox.com/developers/ap
 
 # Installation
 
-- Find in [crates.io](https://crates.io/crates/rust-dropbox)
+- Find on [crates.io](https://crates.io/crates/rust-dropbox)
 - Use [cargo-edit](https://crates.io/crates/cargo-edit)
 ```sh
 cargo add rust-dropbox
 ```
 
-# Usage
+# How to use
 ### blocking api
 - user_check
 ```rust
@@ -37,6 +37,7 @@ use std::{
     fs::File,
     io::Read,
 };
+
 let token = env::var("DROPBOX_TOKEN").unwrap();
 let mut file = File::open("./profile.jpg").unwrap();
 let mut buf: Vec<u8> = Vec::new();
