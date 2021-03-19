@@ -56,7 +56,7 @@ impl AsyncDBXClient {
                 let text = res.text().await?;
                 return Err(DropboxError::DbxInvalidTokenError(text));
             }
-            _ => handle_async_dbx_request_response::<()>(res).await,
+            _ => handle_async_dbx_request_response(res).await,
         }
     }
     ///binding /upload
@@ -77,7 +77,7 @@ impl AsyncDBXClient {
             .body(file)
             .send()
             .await?;
-        handle_async_dbx_request_response::<()>(res).await
+        handle_async_dbx_request_response(res).await
     }
 
     ///binding /download
@@ -89,7 +89,7 @@ impl AsyncDBXClient {
             .header("Dropbox-API-Arg", json!({ "path": path }).to_string())
             .send()
             .await?;
-        handle_async_dbx_request_response::<Vec<u8>>(res).await
+        handle_async_dbx_request_response(res).await
     }
 
     // binding /move_v2
@@ -118,15 +118,15 @@ impl AsyncDBXClient {
             )
             .send()
             .await?;
-        handle_async_dbx_request_response::<()>(res).await
+        handle_async_dbx_request_response(res).await
     }
 }
 
 #[inline]
 #[cfg(feature = "non-blocking")]
-async fn handle_async_dbx_request_response<T: FromAsyncRes>(
+async fn handle_async_dbx_request_response<T: AsyncFrom<reqwest::Response>>(
     res: reqwest::Response,
-) -> DropboxResult<T::Item> {
+) -> DropboxResult<T> {
     if res.status() != StatusCode::OK {
         match res.status() {
             StatusCode::BAD_REQUEST => {
@@ -196,34 +196,31 @@ async fn handle_async_dbx_request_response<T: FromAsyncRes>(
             }
         }
     }
-    T::from_res(res).await
+    T::from(res).await.map(|i| *i)
 }
 
 #[cfg(feature = "non-blocking")]
 #[async_trait]
-trait FromAsyncRes {
-    type Item;
-    async fn from_res(res: reqwest::Response) -> DropboxResult<Self::Item>;
+trait AsyncFrom<T> {
+    async fn from(t: T) -> DropboxResult<Box<Self>>;
 }
 
 #[cfg(feature = "non-blocking")]
 #[async_trait]
-impl FromAsyncRes for Vec<u8> {
-    type Item = Self;
-    async fn from_res(res: reqwest::Response) -> DropboxResult<Self> {
+impl AsyncFrom<reqwest::Response> for Vec<u8> {
+    async fn from(res: reqwest::Response) -> DropboxResult<Box<Self>> {
         res.bytes()
             .await
-            .map(|b| b.to_vec())
+            .map(|b| Box::new(b.to_vec()))
             .map_err(|e| DropboxError::NonBlockingRequestError(e))
     }
 }
 
 #[cfg(feature = "non-blocking")]
 #[async_trait]
-impl FromAsyncRes for () {
-    type Item = Self;
-    async fn from_res(_res: reqwest::Response) -> DropboxResult<Self> {
-        DropboxResult::Ok(())
+impl AsyncFrom<reqwest::Response> for () {
+    async fn from(_res: reqwest::Response) -> DropboxResult<Box<Self>> {
+        DropboxResult::Ok(Box::new(()))
     }
 }
 
@@ -262,7 +259,7 @@ impl DBXClient {
                 let text = res.into_string()?;
                 return Err(DropboxError::DbxInvalidTokenError(text));
             }
-            _ => handle_dbx_request_response::<()>(res),
+            _ => handle_dbx_request_response(res),
         }
     }
     ///binding /upload
@@ -283,7 +280,7 @@ impl DBXClient {
             )
             .send_bytes(&file)?;
 
-        handle_dbx_request_response::<()>(res)
+        handle_dbx_request_response(res)
     }
 
     ///binding /download
@@ -299,7 +296,7 @@ impl DBXClient {
             )
             .call()?;
 
-        handle_dbx_request_response::<Vec<u8>>(res)
+        handle_dbx_request_response(res)
     }
 
     // binding /move_v2
@@ -324,41 +321,40 @@ impl DBXClient {
                 "allow_ownership_transfer": option.allow_ownership_transfer
             }
             ))?;
-        handle_dbx_request_response::<()>(res)
+        handle_dbx_request_response(res)
     }
 }
 
 #[cfg(feature = "blocking")]
-trait FromRes {
-    type Item;
-    fn from_res(res: ureq::Response) -> DropboxResult<Self::Item>;
+trait FromRes<T> {
+    fn from_res(t: T) -> DropboxResult<Box<Self>>;
 }
 
 #[cfg(feature = "blocking")]
-impl FromRes for Vec<u8> {
-    type Item = Self;
-    fn from_res(res: ureq::Response) -> DropboxResult<Self> {
+impl FromRes<ureq::Response> for Vec<u8> {
+    fn from_res(res: ureq::Response) -> DropboxResult<Box<Self>> {
         let len = res
             .header("Content-Length")
             .and_then(|s| s.parse::<usize>().ok())
             .unwrap();
         let mut bytes: Vec<u8> = Vec::with_capacity(len);
         res.into_reader().read_to_end(&mut bytes)?;
-        Ok(bytes)
+        Ok(Box::new(bytes))
     }
 }
 
 #[cfg(feature = "blocking")]
-impl FromRes for () {
-    type Item = Self;
-    fn from_res(_res: ureq::Response) -> DropboxResult<Self> {
-        DropboxResult::Ok(())
+impl FromRes<ureq::Response> for () {
+    fn from_res(_res: ureq::Response) -> DropboxResult<Box<Self>> {
+        DropboxResult::Ok(Box::new(()))
     }
 }
 
 #[inline]
 #[cfg(feature = "blocking")]
-fn handle_dbx_request_response<T: FromRes>(res: ureq::Response) -> DropboxResult<T::Item> {
+fn handle_dbx_request_response<T: FromRes<ureq::Response>>(
+    res: ureq::Response,
+) -> DropboxResult<T> {
     if res.status() != 200 {
         match res.status() {
             400 => {
@@ -428,5 +424,5 @@ fn handle_dbx_request_response<T: FromRes>(res: ureq::Response) -> DropboxResult
             }
         }
     }
-    T::from_res(res)
+    T::from_res(res).map(|i| *i)
 }
