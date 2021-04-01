@@ -60,7 +60,7 @@ impl AsyncDBXClient {
         }
     }
     ///binding /upload
-    pub async fn upload(&self, file: Vec<u8>, path: &str, mode: UploadMode) -> DropboxResult<()> {
+    pub async fn upload(&self, file: Vec<u8>, path: &str, mode: &UploadMode) -> DropboxResult<()> {
         let mode = match mode {
             UploadMode::Add => "add",
             UploadMode::Overwrite => "overwrite",
@@ -97,7 +97,7 @@ impl AsyncDBXClient {
         &self,
         from_path: &str,
         to_path: &str,
-        option: MoveOption,
+        option: &MoveOption,
     ) -> DropboxResult<()> {
         let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
         let res = self
@@ -263,7 +263,7 @@ impl DBXClient {
         }
     }
     ///binding /upload
-    pub fn upload(&self, file: Vec<u8>, path: &str, mode: UploadMode) -> DropboxResult<()> {
+    pub fn upload(&self, file: Vec<u8>, path: &str, mode: &UploadMode) -> DropboxResult<()> {
         let mode = match mode {
             UploadMode::Add => "add",
             UploadMode::Overwrite => "overwrite",
@@ -304,7 +304,7 @@ impl DBXClient {
         &self,
         from_path: &str,
         to_path: &str,
-        option: MoveOption,
+        option: &MoveOption,
     ) -> DropboxResult<()> {
         let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
         let res = self

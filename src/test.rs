@@ -25,7 +25,7 @@ mod tests {
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         let res = client
-            .upload(buf, "/test/profile.jpg", UploadMode::Overwrite)
+            .upload(buf, "/test/profile.jpg", &UploadMode::Overwrite)
             .await;
 
         assert!(res.is_ok())
@@ -41,7 +41,7 @@ mod tests {
             .allow_shared_folder()
             .allow_auto_rename();
         let res = client
-            .move_file("/test/profile.jpg", "/profile.jpg", move_option)
+            .move_file("/test/profile.jpg", "/profile.jpg", &move_option)
             .await;
         assert!(res.is_ok())
     }
@@ -72,7 +72,7 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         file.read_to_end(&mut buf).unwrap();
         let client = client::DBXClient::new(&token);
-        let res = client.upload(buf, "/test/profile.jpg", UploadMode::Overwrite);
+        let res = client.upload(buf, "/test/profile.jpg", &UploadMode::Overwrite);
         assert!(res.is_ok())
     }
 
@@ -84,7 +84,7 @@ mod tests {
             .allow_ownership_transfer()
             .allow_shared_folder()
             .allow_auto_rename();
-        let res = client.move_file("/test/profile.jpg", "/profile.jpg", move_option);
+        let res = client.move_file("/test/profile.jpg", "/profile.jpg", &move_option);
         assert!(res.is_ok())
     }
 
