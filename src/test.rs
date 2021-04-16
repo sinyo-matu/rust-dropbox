@@ -24,7 +24,7 @@ mod tests {
         file.read_to_end(&mut buf).unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let option = UploadOption::new();
+        let option = UploadOption::new().disallow_auto_rename();
         let res = client.upload(buf, "/test/profile.jpg", &option).await;
 
         assert!(res.is_ok())

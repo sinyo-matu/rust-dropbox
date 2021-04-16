@@ -13,13 +13,17 @@ For use, you need a Dropbox [access token](https://www.dropbox.com/developers/ap
 
 - Find on [crates.io](https://crates.io/crates/rust-dropbox)
 - Use [cargo-edit](https://crates.io/crates/cargo-edit)
+
 ```sh
 cargo add rust-dropbox
 ```
 
 # How to use
+
 ### blocking api
+
 - user_check
+
 ```rust
 use rust_dropbox::*;
 use std::env;
@@ -30,6 +34,7 @@ assert!(res.is_ok())
 ```
 
 - upload
+
 ```rust
 use rust_dropbox::*
 use std::env;
@@ -43,11 +48,13 @@ let mut file = File::open("./profile.jpg").unwrap();
 let mut buf: Vec<u8> = Vec::new();
 file.read_to_end(&mut buf).unwrap();
 let client = client::DBXClient::new(&token);
-let res = client.upload(buf, "/test/profile.jpg", UploadMode::Overwrite);
-assert!(res.is_ok())   
+let option = UploadOption::new().disallow_auto_rename();
+let res = client.upload(buf, "/test/profile.jpg", &option).await;
+assert!(res.is_ok())
 ```
 
 - move
+
 ```rust
 use rust_dropbox::*
 use std::env;
@@ -63,6 +70,7 @@ assert!(res.is_ok())
 ```
 
 - download
+
 ```rust
 use rust_dropbox::*
 use std::env;
@@ -80,6 +88,7 @@ file.write_all(&bytes).unwrap();
 ```
 
 ### To use non-blocking api
+
 ```toml
 rust-dropbox={version=*,default-features=false,features=["non-blocking"]}
 ```
