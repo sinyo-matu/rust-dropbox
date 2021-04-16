@@ -1,6 +1,6 @@
 use crate::{
-    DbxRequestErrorSummary, DbxRequestLimitsErrorSummary, DropboxError, DropboxResult, MoveOption,
-    UploadMode,
+    DbxRequestErrorSummary, DbxRequestLimitsErrorSummary, DropboxError, DropboxResult,
+    MoveCopyOption, UploadMode,
 };
 #[cfg(feature = "non-blocking")]
 use async_trait::async_trait;
@@ -97,9 +97,37 @@ impl AsyncDBXClient {
         &self,
         from_path: &str,
         to_path: &str,
-        option: &MoveOption,
+        option: &MoveCopyOption,
     ) -> DropboxResult<()> {
         let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
+        let res = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .body(
+                json!(
+                {
+                    "from_path":from_path,
+                    "to_path":to_path,
+                    "allow_shared_folder": option.allow_shared_folder,
+                    "autorename": option.auto_rename,
+                    "allow_ownership_transfer": option.allow_ownership_transfer
+                }
+                )
+                .to_string(),
+            )
+            .send()
+            .await?;
+        handle_async_dbx_request_response(res).await
+    }
+
+    pub async fn copy(
+        &self,
+        from_path: &str,
+        to_path: &str,
+        option: &MoveCopyOption,
+    ) -> DropboxResult<()> {
+        let url = format!("{}{}", OPERATION_END_POINT, "/2/files/copy_v2");
         let res = self
             .client
             .post(&url)
@@ -304,9 +332,33 @@ impl DBXClient {
         &self,
         from_path: &str,
         to_path: &str,
-        option: &MoveOption,
+        option: &MoveCopyOption,
     ) -> DropboxResult<()> {
         let url = format!("{}{}", OPERATION_END_POINT, "/2/files/move_v2");
+        let res = self
+            .client
+            .post(&url)
+            .set("Content-Type", "application/json")
+            .set("Authorization", &format!("Bearer {}", self.token))
+            .send_json(json!(
+            {
+                "from_path":from_path,
+                "to_path":to_path,
+                "allow_shared_folder": option.allow_shared_folder,
+                "autorename": option.auto_rename,
+                "allow_ownership_transfer": option.allow_ownership_transfer
+            }
+            ))?;
+        handle_dbx_request_response(res)
+    }
+
+    pub fn copy(
+        &self,
+        from_path: &str,
+        to_path: &str,
+        option: &MoveCopyOption,
+    ) -> DropboxResult<()> {
+        let url = format!("{}{}", OPERATION_END_POINT, "/2/files/copy_v2");
         let res = self
             .client
             .post(&url)

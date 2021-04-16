@@ -36,12 +36,27 @@ mod tests {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let move_option = MoveOption::new()
+        let option = MoveCopyOption::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
             .allow_auto_rename();
         let res = client
-            .move_file("/test/profile.jpg", "/profile.jpg", &move_option)
+            .move_file("/test/profile.jpg", "/profile.jpg", &option)
+            .await;
+        assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_copy() {
+        let token = env::var("DROPBOX_TOKEN").unwrap();
+        let client = client::AsyncDBXClient::new(&token);
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        let option = MoveCopyOption::new()
+            .allow_ownership_transfer()
+            .allow_shared_folder()
+            .allow_auto_rename();
+        let res = client
+            .copy("/test/profile.jpg", "/profile.jpg", &option)
             .await;
         assert!(res.is_ok())
     }
@@ -80,11 +95,23 @@ mod tests {
     fn test_blocking_move() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::DBXClient::new(&token);
-        let move_option = MoveOption::new()
+        let option = MoveCopyOption::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
             .allow_auto_rename();
-        let res = client.move_file("/test/profile.jpg", "/profile.jpg", &move_option);
+        let res = client.move_file("/test/profile.jpg", "/profile.jpg", &option);
+        assert!(res.is_ok())
+    }
+
+    #[test]
+    fn test_blocking_copy() {
+        let token = env::var("DROPBOX_TOKEN").unwrap();
+        let client = client::DBXClient::new(&token);
+        let option = MoveCopyOption::new()
+            .allow_ownership_transfer()
+            .allow_shared_folder()
+            .allow_auto_rename();
+        let res = client.copy("/test/profile.jpg", "/profile.jpg", &option);
         assert!(res.is_ok())
     }
 

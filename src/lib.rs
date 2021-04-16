@@ -68,13 +68,14 @@ impl From<ureq::Error> for DropboxError {
         Self::BlockingRequestError(e)
     }
 }
-pub struct MoveOption {
+
+pub struct MoveCopyOption {
     allow_shared_folder: bool,
     auto_rename: bool,
     allow_ownership_transfer: bool,
 }
 
-impl MoveOption {
+impl MoveCopyOption {
     pub fn new() -> Self {
         Self {
             allow_shared_folder: false,
@@ -98,6 +99,7 @@ impl MoveOption {
         self
     }
 }
+
 pub enum UploadMode {
     Add,
     Overwrite,
