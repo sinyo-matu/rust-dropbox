@@ -69,6 +69,46 @@ impl From<ureq::Error> for DropboxError {
     }
 }
 
+pub struct UploadOption {
+    mode: UploadMode,
+    allow_auto_rename: bool,
+    mute_notification: bool,
+    allow_strict_conflict: bool,
+}
+
+impl UploadOption {
+    ///new will return an option with follow value
+    ///mode:"add", autorename:"true", mute:"false", strict_conflict: "false"
+    pub fn new() -> Self {
+        Self {
+            mode: UploadMode::Add,
+            allow_auto_rename: true,
+            mute_notification: false,
+            allow_strict_conflict: false,
+        }
+    }
+
+    pub fn disallow_auto_rename(mut self) -> Self {
+        self.allow_auto_rename = false;
+        self
+    }
+
+    pub fn mute_notification(mut self) -> Self {
+        self.mute_notification = true;
+        self
+    }
+
+    pub fn allow_strict_conflict(mut self) -> Self {
+        self.allow_strict_conflict = true;
+        self
+    }
+
+    pub fn set_upload_mode(mut self, mode: UploadMode) -> Self {
+        self.mode = mode;
+        self
+    }
+}
+
 pub struct MoveCopyOption {
     allow_shared_folder: bool,
     auto_rename: bool,
@@ -76,6 +116,8 @@ pub struct MoveCopyOption {
 }
 
 impl MoveCopyOption {
+    ///new will return an option with follow value
+    ///sheared_folder:"true", autorename:"false", ownership_transfer:"false"
     pub fn new() -> Self {
         Self {
             allow_shared_folder: false,
@@ -100,7 +142,9 @@ impl MoveCopyOption {
     }
 }
 
+///Update will receive rev for the Update.0
 pub enum UploadMode {
     Add,
     Overwrite,
+    Update(String),
 }

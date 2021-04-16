@@ -1,6 +1,6 @@
 use crate::{
     DbxRequestErrorSummary, DbxRequestLimitsErrorSummary, DropboxError, DropboxResult,
-    MoveCopyOption, UploadMode,
+    MoveCopyOption, UploadMode, UploadOption,
 };
 #[cfg(feature = "non-blocking")]
 use async_trait::async_trait;
@@ -60,10 +60,20 @@ impl AsyncDBXClient {
         }
     }
     ///binding /upload
-    pub async fn upload(&self, file: Vec<u8>, path: &str, mode: &UploadMode) -> DropboxResult<()> {
-        let mode = match mode {
-            UploadMode::Add => "add",
-            UploadMode::Overwrite => "overwrite",
+    pub async fn upload(
+        &self,
+        file: Vec<u8>,
+        path: &str,
+        option: &UploadOption,
+    ) -> DropboxResult<()> {
+        let mode = match option.mode {
+            UploadMode::Add => "add".to_string(),
+            UploadMode::Overwrite => "overwrite".to_string(),
+            UploadMode::Update(ref rev) => json!({
+                ".tag":"update",
+                "update":rev
+            })
+            .to_string(),
         };
         let url = format!("{}{}", CONTENT_END_POINT, "/2/files/upload");
         let res = self
@@ -72,7 +82,14 @@ impl AsyncDBXClient {
             .header("Content-Type", "application/octet-stream")
             .header(
                 "Dropbox-API-Arg",
-                json!({"path":path,"mode":mode}).to_string(),
+                json!({
+                    "path":path,
+                    "mode":mode,
+                    "autoreanme":option.allow_auto_rename,
+                    "mute":option.mute_notification,
+                    "strict_conflict":option.allow_strict_conflict
+                })
+                .to_string(),
             )
             .body(file)
             .send()
@@ -291,10 +308,15 @@ impl DBXClient {
         }
     }
     ///binding /upload
-    pub fn upload(&self, file: Vec<u8>, path: &str, mode: &UploadMode) -> DropboxResult<()> {
-        let mode = match mode {
-            UploadMode::Add => "add",
-            UploadMode::Overwrite => "overwrite",
+    pub fn upload(&self, file: Vec<u8>, path: &str, option: &UploadOption) -> DropboxResult<()> {
+        let mode = match option.mode {
+            UploadMode::Add => "add".to_string(),
+            UploadMode::Overwrite => "overwrite".to_string(),
+            UploadMode::Update(ref rev) => json!({
+                ".tag":"update",
+                "update":rev
+            })
+            .to_string(),
         };
         let url = format!("{}{}", CONTENT_END_POINT, "/2/files/upload");
         let res = self
@@ -304,7 +326,15 @@ impl DBXClient {
             .set("Content-Type", "application/octet-stream")
             .set(
                 "Dropbox-API-Arg",
-                json!({"path":path,"mode":mode}).to_string().as_str(),
+                json!({
+                    "path":path,
+                    "mode":mode,
+                    "autoreanme":option.allow_auto_rename,
+                    "mute":option.mute_notification,
+                    "strict_conflict":option.allow_strict_conflict
+                })
+                .to_string()
+                .as_str(),
             )
             .send_bytes(&file)?;
 

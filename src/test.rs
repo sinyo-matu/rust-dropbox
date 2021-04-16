@@ -24,9 +24,8 @@ mod tests {
         file.read_to_end(&mut buf).unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let res = client
-            .upload(buf, "/test/profile.jpg", &UploadMode::Overwrite)
-            .await;
+        let option = UploadOption::new();
+        let res = client.upload(buf, "/test/profile.jpg", &option).await;
 
         assert!(res.is_ok())
     }
@@ -87,7 +86,8 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         file.read_to_end(&mut buf).unwrap();
         let client = client::DBXClient::new(&token);
-        let res = client.upload(buf, "/test/profile.jpg", &UploadMode::Overwrite);
+        let option = UploadOption::new();
+        let res = client.upload(buf, "/test/profile.jpg", &option);
         assert!(res.is_ok())
     }
 
