@@ -85,7 +85,7 @@ impl AsyncDBXClient {
                 json!({
                     "path":path,
                     "mode":mode,
-                    "autoreanme":option.allow_auto_rename,
+                    "autorename":option.allow_auto_rename,
                     "mute":option.mute_notification,
                     "strict_conflict":option.allow_strict_conflict
                 })
@@ -329,7 +329,7 @@ impl DBXClient {
                 json!({
                     "path":path,
                     "mode":mode,
-                    "autoreanme":option.allow_auto_rename,
+                    "autorename":option.allow_auto_rename,
                     "mute":option.mute_notification,
                     "strict_conflict":option.allow_strict_conflict
                 })
