@@ -22,17 +22,6 @@ cargo add rust-dropbox
 
 ### blocking api
 
-- user_check
-
-```rust
-use rust_dropbox::*;
-use std::env;
-let token = env::var("DROPBOX_TOKEN").unwrap();
-let client = client::DBXClient::new(&token);
-let res = client.check_user("ping");
-assert!(res.is_ok())
-```
-
 - upload
 
 ```rust
@@ -48,8 +37,8 @@ let mut file = File::open("./profile.jpg").unwrap();
 let mut buf: Vec<u8> = Vec::new();
 file.read_to_end(&mut buf).unwrap();
 let client = client::DBXClient::new(&token);
-let option = UploadOption::new().disallow_auto_rename();
-let res = client.upload(buf, "/test/profile.jpg", &option).await;
+let option = UploadOptionBuilder::new().build();
+let res = client.upload(buf, "/test/profile.jpg", option);
 assert!(res.is_ok())
 ```
 
@@ -61,11 +50,12 @@ use std::env;
 
 let token = env::var("DROPBOX_TOKEN").unwrap();
 let client = client::DBXClient::new(&token);
-let move_option = MoveOption::new()
+let option = MoveCopyOptionBuilder::new()
     .allow_ownership_transfer()
     .allow_shared_folder()
-    .allow_auto_rename();
-let res = client.move_file("/test/profile.jpg", "/profile.jpg", move_option);
+    .allow_auto_rename()
+    .build();
+let res = client.move_file("/test/profile.jpg", "/profile.jpg", option);
 assert!(res.is_ok())
 ```
 

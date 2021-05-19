@@ -69,14 +69,21 @@ impl From<ureq::Error> for DropboxError {
     }
 }
 
+#[derive(Clone)]
 pub struct UploadOption {
     mode: UploadMode,
     allow_auto_rename: bool,
     mute_notification: bool,
     allow_strict_conflict: bool,
 }
+pub struct UploadOptionBuilder {
+    mode: UploadMode,
+    allow_auto_rename: bool,
+    mute_notification: bool,
+    allow_strict_conflict: bool,
+}
 
-impl UploadOption {
+impl UploadOptionBuilder {
     ///new will return an option with follow value
     ///mode:"add", autorename:"true", mute:"false", strict_conflict: "false"
     pub fn new() -> Self {
@@ -88,34 +95,49 @@ impl UploadOption {
         }
     }
 
-    pub fn disallow_auto_rename(mut self) -> Self {
+    pub fn disallow_auto_rename(&mut self) -> &mut UploadOptionBuilder {
         self.allow_auto_rename = false;
         self
     }
 
-    pub fn mute_notification(mut self) -> Self {
+    pub fn mute_notification(&mut self) -> &mut UploadOptionBuilder {
         self.mute_notification = true;
         self
     }
 
-    pub fn allow_strict_conflict(mut self) -> Self {
+    pub fn allow_strict_conflict(&mut self) -> &mut UploadOptionBuilder {
         self.allow_strict_conflict = true;
         self
     }
 
-    pub fn set_upload_mode(mut self, mode: UploadMode) -> Self {
+    pub fn set_upload_mode(&mut self, mode: UploadMode) -> &mut UploadOptionBuilder {
         self.mode = mode;
         self
     }
+
+    pub fn build(&self) -> UploadOption {
+        UploadOption {
+            mode: self.mode.clone(),
+            allow_auto_rename: self.allow_auto_rename,
+            mute_notification: self.mute_notification,
+            allow_strict_conflict: self.allow_strict_conflict,
+        }
+    }
 }
 
+#[derive(Clone)]
 pub struct MoveCopyOption {
     allow_shared_folder: bool,
     auto_rename: bool,
     allow_ownership_transfer: bool,
 }
+pub struct MoveCopyOptionBuilder {
+    allow_shared_folder: bool,
+    auto_rename: bool,
+    allow_ownership_transfer: bool,
+}
 
-impl MoveCopyOption {
+impl MoveCopyOptionBuilder {
     ///new will return an option with follow value
     ///sheared_folder:"true", autorename:"false", ownership_transfer:"false"
     pub fn new() -> Self {
@@ -126,22 +148,31 @@ impl MoveCopyOption {
         }
     }
 
-    pub fn allow_shared_folder(mut self) -> Self {
+    pub fn allow_shared_folder(&mut self) -> &mut MoveCopyOptionBuilder {
         self.allow_shared_folder = true;
         self
     }
 
-    pub fn allow_auto_rename(mut self) -> Self {
+    pub fn allow_auto_rename(&mut self) -> &mut MoveCopyOptionBuilder {
         self.auto_rename = true;
         self
     }
 
-    pub fn allow_ownership_transfer(mut self) -> Self {
+    pub fn allow_ownership_transfer(&mut self) -> &mut MoveCopyOptionBuilder {
         self.allow_ownership_transfer = true;
         self
     }
+
+    pub fn build(&mut self) -> MoveCopyOption {
+        MoveCopyOption {
+            allow_ownership_transfer: self.allow_ownership_transfer,
+            allow_shared_folder: self.allow_shared_folder,
+            auto_rename: self.auto_rename,
+        }
+    }
 }
 
+#[derive(Clone)]
 ///Update will receive rev for the Update.0
 pub enum UploadMode {
     Add,

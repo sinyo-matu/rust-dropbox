@@ -24,9 +24,8 @@ mod tests {
         file.read_to_end(&mut buf).unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let option = UploadOption::new().disallow_auto_rename();
-        let res = client.upload(buf, "/test/profile.jpg", &option).await;
-
+        let option = UploadOptionBuilder::new().disallow_auto_rename().build();
+        let res = client.upload(buf, "/test/profile.jpg", option).await;
         assert!(res.is_ok())
     }
 
@@ -35,12 +34,13 @@ mod tests {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let option = MoveCopyOption::new()
+        let option = MoveCopyOptionBuilder::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
-            .allow_auto_rename();
+            .allow_auto_rename()
+            .build();
         let res = client
-            .move_file("/test/profile.jpg", "/profile.jpg", &option)
+            .move_file("/test/profile.jpg", "/profile.jpg", option)
             .await;
         assert!(res.is_ok())
     }
@@ -50,12 +50,13 @@ mod tests {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::AsyncDBXClient::new(&token);
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let option = MoveCopyOption::new()
+        let option = MoveCopyOptionBuilder::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
-            .allow_auto_rename();
+            .allow_auto_rename()
+            .build();
         let res = client
-            .copy("/test/profile.jpg", "/profile.jpg", &option)
+            .copy("/test/profile.jpg", "/profile.jpg", option)
             .await;
         assert!(res.is_ok())
     }
@@ -86,8 +87,8 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         file.read_to_end(&mut buf).unwrap();
         let client = client::DBXClient::new(&token);
-        let option = UploadOption::new();
-        let res = client.upload(buf, "/test/profile.jpg", &option);
+        let option = UploadOptionBuilder::new().build();
+        let res = client.upload(buf, "/test/profile.jpg", option);
         assert!(res.is_ok())
     }
 
@@ -95,11 +96,12 @@ mod tests {
     fn test_blocking_move() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::DBXClient::new(&token);
-        let option = MoveCopyOption::new()
+        let option = MoveCopyOptionBuilder::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
-            .allow_auto_rename();
-        let res = client.move_file("/test/profile.jpg", "/profile.jpg", &option);
+            .allow_auto_rename()
+            .build();
+        let res = client.move_file("/test/profile.jpg", "/profile.jpg", option);
         assert!(res.is_ok())
     }
 
@@ -107,11 +109,12 @@ mod tests {
     fn test_blocking_copy() {
         let token = env::var("DROPBOX_TOKEN").unwrap();
         let client = client::DBXClient::new(&token);
-        let option = MoveCopyOption::new()
+        let option = MoveCopyOptionBuilder::new()
             .allow_ownership_transfer()
             .allow_shared_folder()
-            .allow_auto_rename();
-        let res = client.copy("/test/profile.jpg", "/profile.jpg", &option);
+            .allow_auto_rename()
+            .build();
+        let res = client.copy("/test/profile.jpg", "/profile.jpg", option);
         assert!(res.is_ok())
     }
 
